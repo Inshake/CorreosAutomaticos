@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Envío de Correos</title>
+    <link rel="stylesheet" href="../static/estilo.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Contenedor principal -->
+    <div class="container">
+        <h1>Envío de correos personalizados</h1>
+
+        <!-- FORMULARIO -->
+        <form id="envioForm" action="/send" method="POST" enctype="multipart/form-data" class="formulario">
+
+            <div class="campo">
+                <label for="asunto">Asunto</label>
+                <input type="text" id="asunto" name="asunto" required>
+            </div>
+
+            <div class="campo">
+                <label for="texto">Texto del correo</label>
+                <textarea id="texto" name="texto" rows="4" required></textarea>
+            </div>
+
+            <div class="campo">
+                <label for="correo">Correo remitente</label>
+                <input type="email" id="correo" name="correo" required>
+            </div>
+
+            <div class="campo">
+                <label for="contraseniaSec">Contraseña secreta</label>
+                <input type="password" id="contraseniaSec" name="contraseniaSec" required>
+            </div>
+
+            <div class="campo archivo-contenedor">
+                <label for="archivo">Archivo Excel</label>
+
+                <div class="archivo-wrapper">
+                    <input type="file" id="archivo" name="archivo" accept=".xlsx" required>
+
+                    <!-- Boton para borrar si hay un archivo en el input -->
+                    <button type="button" id="btnLimpiar" class="btn-limpiar">Limpiar</button>
+                </div>
+            </div>
+
+            <div class="campo">
+                <button type="submit" class="btn" id="btnEnviar">Enviar correos</button>
+            </div>
+        </form>
+    </div>
+
+
+    <div id="toast" class="toast"></div>
+
+    <!-- Modal para confirmar si quiere subir el archivo  -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <p>¿Seguro que deseas enviar los correos?</p>
+            <div class="modal-buttons">
+                <button id="confirmYes" class="btn yes">Sí, enviar</button>
+                <button id="confirmNo" class="btn no">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../static/enviar.js"></script>
+
+</body>
+</html>
