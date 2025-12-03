@@ -1,87 +1,125 @@
-// --- Selección de elementos ---
 const form = document.getElementById("envioForm");
 const toast = document.getElementById("toast");
-const modal = document.getElementById("confirmModal");
+const confirmModal = document.getElementById("confirmModal");
 const confirmYes = document.getElementById("confirmYes");
 const confirmNo = document.getElementById("confirmNo");
 const btnEnviar = document.getElementById("btnEnviar");
 const btnLimpiar = document.getElementById("btnLimpiar");
 const archivo = document.getElementById("archivo");
+const fileLabel = document.querySelector(".archivo-personalizado");
 
+const infoButton = document.querySelector(".btnInfo");
+const infoModal = document.getElementById("infoModal");
 
-// Función para mostrar mensajes (toast)
-function showToast(message) {
+if (window.SERVER_ERROR) {
+    showToast(window.SERVER_ERROR, "error");
+}
+
+if (window.SERVER_SUCCESS) {
+    showToast(window.SERVER_SUCCESS, "success");
+}
+
+function showToast(message, type = "error") {
     toast.textContent = message;
+    toast.classList.remove("toast-error", "toast-success");
+    if (type === "success") {
+        toast.classList.add("toast-success");
+    } else {
+        toast.classList.add("toast-error");
+    }
     toast.classList.add("show");
 
     setTimeout(() => {
         toast.classList.remove("show");
-    }, 3000);
+    }, 9000);
 }
 
-
-// --- VALIDACIONES ---
 function validarFormulario() {
     let valido = true;
 
-    // Limpia errores anteriores
     document.querySelectorAll(".error").forEach(e => e.classList.remove("error"));
 
     const asunto = document.getElementById("asunto");
     const texto = document.getElementById("texto");
     const correo = document.getElementById("correo");
     const pass = document.getElementById("contraseniaSec");
-    const archivo = document.getElementById("archivo");
+    const archivoInput = document.getElementById("archivo");
 
-    // CHECK 1: Campos vacíos
-    if (!asunto.value.trim()) { asunto.classList.add("error"); valido = false; }
-    if (!texto.value.trim()) { texto.classList.add("error"); valido = false; }
-    if (!correo.value.trim()) { correo.classList.add("error"); valido = false; }
-    if (!pass.value.trim()) { pass.classList.add("error"); valido = false; }
-
-    // CHECK 2: Validar extensión del archivo
-    if (!archivo.value.endsWith(".xlsx") && !archivo.value.endsWith(".xls")) {
-        archivo.classList.add("error");
+    if (!asunto.value.trim()) {
+        asunto.classList.add("error");
         valido = false;
-        showToast("El archivo debe ser Excel (.xlsx o .xls)");
+    }
+    if (!texto.value.trim()) {
+        texto.classList.add("error");
+        valido = false;
+    }
+    if (!correo.value.trim()) {
+        correo.classList.add("error");
+        valido = false;
+    }
+    if (!pass.value.trim()) {
+        pass.classList.add("error");
+        valido = false;
+    }
+
+    const fileName = archivoInput.value.toLowerCase();
+    if (!fileName.endsWith(".xlsx") && !fileName.endsWith(".xls")) {
+        archivoInput.classList.add("error");
+        valido = false;
+        showToast("El archivo debe ser Excel (.xlsx o .xls)", "error");
     }
 
     return valido;
 }
 
-
-// --- Interceptar envío ---
 form.addEventListener("submit", function (e) {
-    e.preventDefault();  // detiene el submit por defecto
+    e.preventDefault();
 
     if (!validarFormulario()) {
-        showToast("Faltan completar campos obligatorios.");
+        showToast("Faltan completar campos obligatorios.", "error");
         return;
     }
 
-    // Mostrar modal de confirmación
-    modal.style.display = "flex";
+    confirmModal.style.display = "flex";
 });
 
-
-// --- Confirmación ---
 confirmYes.addEventListener("click", () => {
-    modal.style.display = "none";
-
-    // Deshabilitar botón y poner loading
+    confirmModal.style.display = "none";
     btnEnviar.disabled = true;
     btnEnviar.textContent = "Enviando...";
-
-    form.submit();  // ahora sí envía
+    form.submit();
 });
 
 confirmNo.addEventListener("click", () => {
-    modal.style.display = "none";
+    confirmModal.style.display = "none";
 });
 
-// --- LIMPIAR ARCHIVO ---
 btnLimpiar.addEventListener("click", () => {
-    archivo.value = "";       // limpia el archivo
-    archivo.classList.remove("error"); // borra error si lo había
-    showToast("Archivo limpiado.");
+    archivo.value = "";
+    archivo.classList.remove("error");
+    fileLabel.textContent = "Selecciona un archivo";
+    showToast("Archivo limpiado.", "success");
 });
+
+if (infoButton && infoModal) {
+    infoButton.addEventListener("click", (e) => {
+        e.stopPropagation();
+        infoModal.classList.toggle("show");
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!infoModal.classList.contains("show")) return;
+        const isClickInside = infoModal.contains(e.target) || infoButton.contains(e.target);
+        if (!isClickInside) {
+            infoModal.classList.remove("show");
+        }
+    });
+
+    archivo.addEventListener("change", () => {
+        if (archivo.files.length > 0) {
+            fileLabel.textContent = archivo.files[0].name;
+        } else {
+            fileLabel.textContent = "Selecciona un archivo";
+        }
+    });
+}

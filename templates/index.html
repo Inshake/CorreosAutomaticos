@@ -9,11 +9,9 @@
 </head>
 <body>
 
-    <!-- Contenedor principal -->
     <div class="container">
         <h1>Envío de correos personalizados</h1>
 
-        <!-- FORMULARIO -->
         <form id="envioForm" action="/send" method="POST" enctype="multipart/form-data" class="formulario">
 
             <div class="campo">
@@ -40,9 +38,8 @@
                 <label for="archivo">Archivo Excel</label>
 
                 <div class="archivo-wrapper">
-                    <input type="file" id="archivo" name="archivo" accept=".xlsx" required>
-
-                    <!-- Boton para borrar si hay un archivo en el input -->
+                    <label for="archivo" class="archivo-personalizado">Selecciona un archivo</label>
+                    <input type="file" id="archivo" name="archivo" accept=".xlsx,.xls" hidden required>
                     <button type="button" id="btnLimpiar" class="btn-limpiar">Limpiar</button>
                 </div>
             </div>
@@ -53,10 +50,25 @@
         </form>
     </div>
 
+    <div class="info">
+        <button type="button" class="btnInfo">Información</button>
+
+        <div class="info-modal" id="infoModal">
+            <div class="modalContenido">
+                <h1>Información</h1>
+                <p>Haz click para descargar plantilla de excel requerida para el sistema</p>
+                <a href="{{ url_for('static', filename='ExcelEjemplo.xlsx') }}" download> Descargar plantilla</a>
+                <h1>Comandos</h1>
+                <ul>
+                    <li><strong>{nombre}</strong>: Será reemplazado por el nombre del destinatario.</li>
+                    <li><strong>{apellido}</strong>: Será reemplazado por el apellido del destinatario.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <div id="toast" class="toast"></div>
 
-    <!-- Modal para confirmar si quiere subir el archivo  -->
     <div id="confirmModal" class="modal">
         <div class="modal-content">
             <p>¿Seguro que deseas enviar los correos?</p>
@@ -66,6 +78,18 @@
             </div>
         </div>
     </div>
+
+    {% if error %}
+    <script>
+        window.SERVER_ERROR = "{{ error }}";
+    </script>
+    {% endif %}
+
+    {% if success %}
+    <script>
+        window.SERVER_SUCCESS = "{{ success }}";
+    </script>
+    {% endif %}
 
     <script src="../static/enviar.js"></script>
 

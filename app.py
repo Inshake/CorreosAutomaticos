@@ -1,72 +1,127 @@
-from flask import Flask, render_template, request
-import pandas as pd  # Para leer el Excel
-import smtplib       # Para enviar correos
-from email.message import EmailMessage  # Para crear el mensaje
+from flask import Flask, render_template, request, redirect, url_for
+import pandas as pd
+import smtplib
+from email.message import EmailMessage
+import re
+from io import BytesIO
 
 app = Flask(__name__)
 
+EMAIL_RE = re.compile(r"^[^@]+@[^@]+\.[^@]+$") # Patrón para validar correos 
+
+COLUMNAS_ESPERADAS = ["email", "nombre", "apellido", "link"] # Da el orden de las columnas esperadas
+NOMBRE_COL = {
+    "email": "correo electrónico",
+    "nombre": "nombre",
+    "apellido": "apellido",
+    "link": "link del certificado"
+}
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", error=None, success=None)
 
-@app.route("/send", methods=["POST"])
+@app.route("/send", methods=["GET", "POST"])
 def send():
+    if request.method == "GET":
+        return redirect(url_for("index"))
 
-    # Datos del formulario
-    asunto = request.form.get("asunto")
-    texto = request.form.get("texto")
-    correo = request.form.get("correo")
-    contraseniaSec = request.form.get("contraseniaSec")
-
-    # Archivo Excel
+    asunto = request.form.get("asunto", "").strip()
+    texto = request.form.get("texto", "").strip()
+    correo = request.form.get("correo", "").strip()
+    contraseniaSec = request.form.get("contraseniaSec", "").strip()
     archivo = request.files.get("archivo")
 
-    print("\n--- Datos recibidos ---")
-    print("Asunto:", asunto)
-    print("Texto:", texto)
-    print("Correo remitente:", correo)
-    print("App Password:", contraseniaSec)
-    print("Archivo:", archivo.filename if archivo else "No llegó archivo")
+    if not asunto or not texto or not correo or not contraseniaSec: # Verifica que los campos no estén vacíos
+        return render_template("index.html", error="Faltan completar campos del formulario.", success=None)
 
-    # Leer Excel
-    excel_data = pd.read_excel(archivo)
-    print("\n--- Primeras filas del Excel ---")
-    print(excel_data.head())
+    if not archivo or archivo.filename == "":
+        return render_template("index.html", error="No se recibió archivo Excel.", success=None)
 
-    # Obtener primer email para prueba
-    destinatario = excel_data["email"][0]
+    if not (archivo.filename.endswith(".xlsx") or archivo.filename.endswith(".xls")):
+        return render_template("index.html", error="El archivo debe ser Excel (.xlsx o .xls).", success=None)
 
-    # Obtener link del Excel
-    link_certificado = excel_data["link"][0]   
-    print("\nLink para este destinatario:", link_certificado)
+    try: # Lee el archivo Excel
+        contenido = archivo.read()
+        excel = BytesIO(contenido)
+        df = pd.read_excel(excel, header=1, usecols=[1, 2, 3, 4])
+    except Exception:
+        return render_template("index.html", error="Error al leer el archivo Excel.", success=None)
 
-    # Acá creamos el contenido del correo y le el certificado.
-    contenido_final = f"""{texto}
+    if list(df.columns) != COLUMNAS_ESPERADAS: # Verifica que las columnas sean las esperadas
+        return render_template(
+            "index.html",
+            error="Formato incorrecto del Excel. Columnas esperadas: email, nombre, apellido, link.",
+            success=None
+        )
 
-🔗 Aquí tienes tu certificado:
-{link_certificado}
+    errores = [] # Creamos una lista para almacenar errores de validación
+
+    if df.empty:
+        errores.append("El Excel no contiene filas de datos.")
+
+    for i, row in df.iterrows(): # Validamos cada fila
+        fila = i + 3
+
+        for col in COLUMNAS_ESPERADAS:
+            valor = row[col]
+            valor_str = "" if pd.isna(valor) else str(valor).strip()
+
+            if not valor_str:
+                errores.append(f"Fila {fila}, {NOMBRE_COL[col]} está vacío.")
+                continue
+
+            if col == "email" and not EMAIL_RE.match(valor_str):
+                errores.append(f"Fila {fila}, correo electrónico inválido: {valor_str}")
+
+            if col == "link" and not valor_str.startswith(("http://", "https://")):
+                errores.append(f"Fila {fila}, link inválido: {valor_str}")
+
+    if errores:
+        return render_template("index.html", error=" | ".join(errores), success=None)
+
+    enviados = 0
+    errores_envio = []
+
+    try: # Configuramos el servidor SMTP y enviamos los correos
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(correo, contraseniaSec)
+
+            for i, row in df.iterrows(): 
+                destinatario = str(row["email"]).strip()
+                nombre = str(row["nombre"]).strip()
+                apellido = str(row["apellido"]).strip()
+                link = str(row["link"]).strip()
+
+                asunto_personalizado = asunto.replace("{nombre}", nombre).replace("{apellido}", apellido)
+                texto_personalizado = texto.replace("{nombre}", nombre).replace("{apellido}", apellido)
+
+                contenido = f"""{texto_personalizado}
+
+{link}
 """
 
-    msg = EmailMessage()
-    msg["From"] = correo
-    msg["To"] = destinatario
-    msg["Subject"] = asunto
-    msg.set_content(contenido_final)
+                msg = EmailMessage()
+                msg["From"] = correo
+                msg["To"] = destinatario
+                msg["Subject"] = asunto_personalizado
+                msg.set_content(contenido)
 
-    # Esta parte de código manda el correo, con la libería smtplib
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            print("Intentando login con:", correo)
-            print("Longitud password:", len(contraseniaSec))
-            smtp.login(correo, contraseniaSec)
-            smtp.send_message(msg)
-
-        print("Correo enviado correctamente.")
+                try:  # Enviamos el correo
+                    smtp.send_message(msg)
+                    enviados += 1
+                except Exception as e:
+                    errores_envio.append(f"{destinatario}: {e}")
 
     except Exception as e:
-        print("Error al enviar correo:", e)
+        return render_template("index.html", error=f"Error SMTP: {e}", success=None)
 
-    return "Correo de prueba enviado (si falla debería mostrarme en consola el error)."
+    if errores_envio:
+        mensaje = f"Enviados: {enviados}. Errores: " + " | ".join(errores_envio)
+        return render_template("index.html", error=mensaje, success=None)
+    else:
+        mensaje = f"Correos enviados correctamente. Total enviados: {enviados}."
+        return render_template("index.html", error=None, success=mensaje)
 
 if __name__ == "__main__":
     app.run(debug=True)
