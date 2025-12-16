@@ -93,19 +93,24 @@ def send():
                 apellido = str(row["apellido"]).strip()
                 link = str(row["link"]).strip()
 
-                asunto_personalizado = asunto.replace("{nombre}", nombre).replace("{apellido}", apellido)
-                texto_personalizado = texto.replace("{nombre}", nombre).replace("{apellido}", apellido)
+                asunto_personalizado = (
+                    asunto
+                    .replace("{nombre}", nombre)
+                    .replace("{apellido}", apellido)
+                )
 
-                contenido = f"""{texto_personalizado}
-
-{link}
-"""
+                texto_personalizado = (
+                    texto
+                    .replace("{nombre}", nombre)
+                    .replace("{apellido}", apellido)
+                    .replace("{enlace}", link)
+                )
 
                 msg = EmailMessage()
                 msg["From"] = correo
                 msg["To"] = destinatario
                 msg["Subject"] = asunto_personalizado
-                msg.set_content(contenido)
+                msg.set_content(texto_personalizado)
 
                 try:  # Enviamos el correo
                     smtp.send_message(msg)

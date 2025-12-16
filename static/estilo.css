@@ -281,7 +281,7 @@ h1 {
     border-color: #1D4ED8;
 }
 
-#archivo:not(:placeholder-shown) + .archivo-personalizado,
+#archivo:not(:placeholder-shown) + .archivo-personalizado, /* cuando hay un archivo seleccionado */
 #archivo:valid + .archivo-personalizado {
     border-style: solid;
     background: #DCFCE7;
